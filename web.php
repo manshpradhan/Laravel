@@ -12,18 +12,14 @@
 */
 
 Route::get('/', function () {
-    return view('front.index');
+    return view('front.home');
 });
-
-
-Route::get('/about', function () {
-    return "Hi, its me about";
+Route::get('/about', function()
+{
+    return view('front.about') ;
 });
-
-Route::get('/', function () {
-    return view('front.index',['name' => 'Manish']);
+Route::get('/contact', function()
+{
+    return view('front.contact') ;
 });
-
-
-Route::get('/names', 'FrontController@index') ;
-
+Route::get('/names', 'FrontController@index');
