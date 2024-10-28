@@ -1,0 +1,16 @@
+name: Deploy Individual App
+
+on:
+  push:
+    branches:
+      - develop
+      - separate-deploy-calc-mono
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "dev"
+      app_name:
+        description: "Name of the app to deploy"
+        required: true
