@@ -1,0 +1,89 @@
+name: Deploy Three
+
+on:
+  push:
+    branches:
+      - develop
+      - dev-flash
+      - separeate-deploy-calc-mono
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Env to deploy to"
+        required: true
+        default: "dev"
+      app_name:
+        description: "Name of the app to deploy"
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Deploying selected apps
+    environment: ${{ github.event.inputs.environment }}
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      VITE_APP_ENV: ${{ vars.VITE_APP_ENV }}
+      VITE_APP_GA_ID: ${{ vars.VITE_APP_GA_ID }}
+      VITE_APP_GTM_ID: ${{ vars.VITE_APP_GTM_ID }}
+      VITE_APP_GA_CATEGORY_NAME: ${{ vars.VITE_APP_GA_CATEGORY_NAME }}
+      VITE_APP_GA_WAIVED_LMI_CATEGORY_NAME: ${{ vars.VITE_APP_GA_WAIVED_LMI_CATEGORY_NAME }}
+      ARTIFACT_BUCKET_NAME: ${{ vars.ARTIFACT_BUCKET_NAME }}
+      VITE_FORM_RECIPIENT: ${{ vars.VITE_FORM_RECIPIENT }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.environment == 'dev' && github.ref_name == 'separeate-deploy-calc-mono' && 'separeate-deploy-calc-mono' || 'develop' }}
+          fetch-depth: 0
+
+      - name: Get repository name
+        id: repo-name
+        uses: MariachiBear/get-repo-name-action@v1.1.0
+        with:
+          with-owner: 'false'
+          string-case: 'lowercase'
+
+      - name: Set environment variables based on branch
+        run: |
+            touch .env
+            echo "ENV=${{ job.environment }}" >> .env
+            echo "Using branch: ${{ github.ref_name }}"
+            cat .env
+        shell: bash
+
+      - name: Show environment variables
+        run: |
+          echo "Environment: ${{ job.environment }}"
+          echo "API_KEY: $API_KEY"
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2
+
+      - uses: bahmutov/npm-install@v1.4.5
+      - uses: nrwl/last-successful-commit-action@v1
+        id: last_successful_commit
+        with:
+          branch: 'develop'
+          workflow_id: 'ci.yml'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: node --version
+      - run: npm --version
+      - run: yarn --version
+      - run: echo ${{ github.ref_name }}
+      - run: echo ${{ github.ref }}
+      - run: echo ${{ steps.last_successful_commit.outputs.commit_hash }}
+      - run: git remote -v
+      - run: git branch -a
+      - run: git status
+      - run: git log
+
+      - name: Deploy the specific app
+        run: |
+          app_name=overall-assessment
+          echo "Deploying app: $app_name on environment: ${{ github.event.inputs.environment }}"
+          yarn nx run $app_name:deploy --stage=dev
